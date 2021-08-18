@@ -21,10 +21,7 @@ object Spreadsheet {
         val lines = reader.getLines().toList
         reader.close()
         lines
-      }.toEither match {
-        case Left(value) => Left(value.getMessage)
-        case Right(value) => Right(value)
-      }
+      }.toEither.left.map(_.getMessage)
     }
   }
 
@@ -91,7 +88,7 @@ object Spreadsheet {
     override def evaluateToString(): String = {
       val option = list.find { case (_, cell) => ref == cell }
       option match {
-        case Some(value) => new SpreadsheetConverter().processCell(value._1, list).evaluateToString()
+        case Some((content, _)) => new SpreadsheetConverter().processCell(content, list).evaluateToString()
         case None => "Error: Incorrect cell reference"
       }
     }
@@ -99,7 +96,7 @@ object Spreadsheet {
     override def evaluateToInt(): Either[ErrorMessage, Int] = {
       val option = list.find { case (_, cell) => ref == cell }
       option match {
-        case Some(value) => new SpreadsheetConverter().processCell(value._1, list).evaluateToInt()
+        case Some((content, _)) => new SpreadsheetConverter().processCell(content, list).evaluateToInt()
         case None => Left("Error: Incorrect cell reference")
       }
     }
@@ -185,52 +182,50 @@ object Spreadsheet {
     }
   }
 
-  trait Writer {
-    def write(list: List[(Any, Cell)]): Either[ErrorMessage, Unit]
+  trait SpreadsheetWriter {
+    def write(list: List[(String, Cell)]): Either[ErrorMessage, Unit]
 
-    def format(list: List[(Any, Cell)], f: String => Unit): Unit = {
+    def format(list: List[(String, Cell)], f: String => Unit): Unit = {
       list.map { case (content, cell) =>
         cell match {
-          case c if c == "A1" => content.toString
-          case c if c.startsWith("A") => "\n" + content.toString
-          case _ => "\t" + content.toString
+          case c if c == "A1" => content
+          case c if c.startsWith("A") => "\n" + content
+          case _ => "\t" + content
         }
       }
         .foreach(str => f(str))
     }
   }
 
-  class SpreadsheetFileWriter(pathToFile: String) extends Writer {
-    override def write(list: List[(Any, Cell)]): Either[ErrorMessage, Unit] = {
+  class SpreadsheetFileWriter(pathToFile: String) extends SpreadsheetWriter {
+    override def write(list: List[(String, Cell)]): Either[ErrorMessage, Unit] = {
       Try {
         val writer = new FileWriter(new File(pathToFile))
         format(list, str => writer.write(str))
         writer.close()
-      }.toEither match {
-        case Left(value) => Left(value.getMessage)
-        case _ => Right()
-      }
+      }.toEither.left.map(_.getMessage)
     }
   }
 
-  class SpreadsheetConsoleWriter extends Writer {
-    override def write(list: List[(Any, Cell)]): Either[ErrorMessage, Unit] = {
-      Right(format(list, str => print(str)))
+  class SpreadsheetConsoleWriter extends SpreadsheetWriter {
+    override def write(list: List[(String, Cell)]): Either[ErrorMessage, Unit] = {
+      Right(format(list, print(_)))
     }
+  }
+
+  def selectWriter(args: Array[String]): SpreadsheetWriter = {
+    if (args.length >= 2)
+      new SpreadsheetFileWriter(args(1))
+    else
+      new SpreadsheetConsoleWriter
   }
 
   def main(args: Array[String]): Unit = {
-    def selectWriter(args: Array[String]): Writer = {
-      if (args.length >= 2)
-        new SpreadsheetFileWriter(args(1))
-      else
-        new SpreadsheetConsoleWriter
-    }
-
     val reader = new SpreadsheetReader(args(0))
     val parser = new SpreadsheetParser()
     val converter = new SpreadsheetConverter()
     val writer = selectWriter(args)
+
     val result = for {
       read <- reader.read()
       parsed <- parser.parse(read)

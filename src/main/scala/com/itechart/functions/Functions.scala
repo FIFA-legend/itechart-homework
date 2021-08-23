@@ -1,18 +1,21 @@
 package com.itechart.functions
 
+import scala.annotation.tailrec
+
 object Functions {
 
   // https://www.codewars.com/kata/555eded1ad94b00403000071/train/scala
 
   def seriesSum(n: Int): String = {
-    def sum(n: Int, denominator: Double): Double = {
-      if (n == 0) 0
+    @tailrec
+    def summarize(n: Int, denominator: Double, sum: Double): Double = {
+      if (n == 0) sum
       else {
-        1 / denominator + sum(n - 1, denominator + 3)
+        summarize(n - 1, denominator + 3, sum + 1 / denominator)
       }
     }
 
-    val result = sum(n, 1)
+    val result = summarize(n, denominator = 1, sum = 0)
     f"$result%.2f"
   }
 
@@ -41,7 +44,7 @@ object Functions {
   // https://www.codewars.com/kata/550498447451fbbd7600041c/train/scala
 
   def comp(seq1: Seq[Int], seq2: Seq[Int]): Boolean = {
-    if (seq1 == null || seq2 == null || seq1.length != seq2.length) false
+    if ((seq1 == Nil || seq2 == Nil) && seq1 != seq2) false
     else seq1.sorted
       .zip(seq2.sorted)
       .forall { case (int1, int2) => int1 * int1 == int2 }
@@ -60,17 +63,20 @@ object Functions {
   // https://www.codewars.com/kata/51ba717bb08c1cd60f00002f/train/scala
 
   def solution(xs: List[Int]): String = {
-    def func(previous: Int, list: List[Int]): String = {
+    @tailrec
+    def func(previous: Int, list: List[Int], acc: String): String = {
       list match {
-        case Nil => ""
-        case element :: Nil => element.toString
+        case Nil => acc
+        case element :: Nil => acc + element.toString
         case element :: next :: tail =>
-          if (previous + 1 == element && next - 1 == element) "_" + func(element, next :: tail)
-          else element + "," + func(element, next :: tail)
+          if (previous + 1 == element && next - 1 == element) func(element, next :: tail, acc + "_")
+          else func(element, next :: tail, acc + element + ",")
       }
     }
 
-    func(Int.MinValue, xs).replaceAll(",_", "_").replaceAll("_+", "-")
+    func(Int.MinValue, xs, "")
+      .replaceAll(",_", "_")
+      .replaceAll("_+", "-")
   }
 
   // https://www.codewars.com/kata/556deca17c58da83c00002db/train/scala
@@ -102,7 +108,7 @@ object Functions {
 
   def hasValidColumns(board: Array[Array[Int]]): Boolean = {
     def validColumn(col: Int, arrays: Array[Array[(Int, Int)]]): Boolean = {
-      val column = arrays.foldLeft(List[(Int, Int)]())((acc, array) => acc ::: array.toList)
+      val column = arrays.flatMap(_.toList)
         .filter { case (_, index) => index == col }
         .map { case (int, _) => int }
       (1 to 9).forall(column.contains(_))
@@ -115,8 +121,7 @@ object Functions {
   def hasValidSquares(board: Array[Array[Int]]): Boolean = {
     def validSquare(row: Int, column: Int, board: Array[Array[Int]]): Boolean = {
       val square = board.slice(row, row + 3)
-        .map(_.slice(column, column + 3))
-        .foldLeft(List[Int]())((acc, array) => acc ::: array.toList)
+        .flatMap(_.slice(column, column + 3))
       (1 to 9).forall(square.contains(_))
     }
 
@@ -124,6 +129,6 @@ object Functions {
   }
 
   def main(args: Array[String]): Unit = {
-
+    
   }
 }

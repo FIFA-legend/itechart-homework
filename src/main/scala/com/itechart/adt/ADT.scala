@@ -14,7 +14,6 @@ object ADT {
   sealed trait Color
   final case object Red extends Color
   final case object Black extends Color
-  final case object Green extends Color
 
   sealed abstract case class Square private(value: Int, color: Color)
   object Square {
@@ -26,16 +25,28 @@ object ADT {
     private def determineColor(value: Int): Color = {
       val reds = Set(1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36)
       value match {
-        case 0 => Green
         case v if reds.contains(v) => Red
         case _ => Black
       }
     }
   }
 
-  sealed trait Bet {
-    def multiplier: Int = {
-      this match {
+  sealed trait Bet
+  object Bet {
+    final case class StraightUp(single: Square) extends Bet
+    final case class Split(upperSquare: Square) extends Bet
+    final case class Street(start: Square) extends Bet
+    final case class CornerBet(upperLeftCorner: Square) extends Bet
+    final case class Line(upperLeftCorner: Square) extends Bet
+    final case class Dozen(dozen: Int) extends Bet
+    final case class Column(column: Int) extends Bet
+    final case class NumberHalf(half: Int) extends Bet
+    final case class ColorHalf(color: Color) extends Bet
+  }
+
+  object BetUtils {
+    def multiplier(bet: Bet): Int = {
+      bet match {
         case Bet.StraightUp(_) => 36
         case Bet.Split(_) => 18
         case Bet.Street(_) => 12
@@ -48,8 +59,8 @@ object ADT {
       }
     }
 
-    def condition(square: Square): Boolean = {
-      this match {
+    def condition(bet: Bet, square: Square): Boolean = {
+      bet match {
         case Bet.StraightUp(single) => square.value == single.value
         case Bet.Split(upperSquare) => square.value == upperSquare.value || square.value == upperSquare.value + 3
         case Bet.Street(start) => square.value >= start.value && square.value <= start.value + 2
@@ -62,22 +73,10 @@ object ADT {
       }
     }
 
-    def play(generatedSquare: Square, amount: Int): GameResult = {
-      if (condition(generatedSquare)) Win(amount * multiplier)
+    def play(bet: Bet, generatedSquare: Square, amount: Int): GameResult = {
+      if (condition(bet, generatedSquare)) Win(amount * multiplier)
       else Lose
     }
-  }
-
-  object Bet {
-    final case class StraightUp(single: Square) extends Bet
-    final case class Split(upperSquare: Square) extends Bet
-    final case class Street(start: Square) extends Bet
-    final case class CornerBet(upperLeftCorner: Square) extends Bet
-    final case class Line(upperLeftCorner: Square) extends Bet
-    final case class Dozen(dozen: Int) extends Bet
-    final case class Column(column: Int) extends Bet
-    final case class NumberHalf(half: Int) extends Bet
-    final case class ColorHalf(color: Color) extends Bet
   }
 
   final case class Player(amount: Int, bet: Bet)
@@ -110,7 +109,7 @@ object ADT {
     val generated = generate(RNG(20))
     generated match {
       case Left(_) => List()
-      case Right(value) => players.map { case Player(amount, bet) => bet.play(value, amount) }
+      case Right(value) => players.map { case Player(amount, bet) => BetUtils.play(bet, value, amount) }
     }
   }
 

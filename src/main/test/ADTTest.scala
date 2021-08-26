@@ -1,5 +1,5 @@
 import com.itechart.adt.ADT.Bet.{ColorHalf, Split, StraightUp, Street}
-import com.itechart.adt.ADT.{Black, Lose, RNG, Red, Square, Win, generate}
+import com.itechart.adt.ADT.{BetUtils, Black, Lose, RNG, Red, Square, Win, generate}
 import org.scalatest.FunSuite
 
 class ADTTest extends FunSuite {
@@ -21,10 +21,9 @@ class ADTTest extends FunSuite {
     val bet2 = Square.create(17)
     val generated = generate(RNG(20))
     (bet1, bet2, generated) match {
-      case (Right(value1), Right(value2), Right(value3)) => {
-        assert(StraightUp(value1).play(value3, 25) === Win(900))
-        assert(StraightUp(value2).play(value3, 25) === Lose)
-      }
+      case (Right(value1), Right(value2), Right(value3)) =>
+        assert(BetUtils.play(StraightUp(value1), value3, 25) === Win(900))
+        assert(BetUtils.play(StraightUp(value2), value3, 25) === Lose)
       case _ =>
     }
   }
@@ -34,10 +33,9 @@ class ADTTest extends FunSuite {
     val bet2 = Square.create(17)
     val generated = generate(RNG(20))
     (bet1, bet2, generated) match {
-      case (Right(value1), Right(value2), Right(value3)) => {
-        assert(Split(value1).play(value3, 25) === Win(450))
-        assert(Split(value2).play(value3, 25) === Lose)
-      }
+      case (Right(value1), Right(value2), Right(value3)) =>
+        assert(BetUtils.play(Split(value1), value3, 25) === Win(450))
+        assert(BetUtils.play(Split(value2), value3, 25) === Lose)
       case _ =>
     }
   }
@@ -47,10 +45,9 @@ class ADTTest extends FunSuite {
     val bet2 = Square.create(17)
     val generated = generate(RNG(20))
     (bet1, bet2, generated) match {
-      case (Right(value1), Right(value2), Right(value3)) => {
-        assert(Street(value1).play(value3, 25) === Win(300))
-        assert(Street(value2).play(value3, 25) === Lose)
-      }
+      case (Right(value1), Right(value2), Right(value3)) =>
+        assert(BetUtils.play(Street(value1), value3, 25) === Win(300))
+        assert(BetUtils.play(Street(value2), value3, 25) === Lose)
       case _ =>
     }
   }
@@ -58,10 +55,9 @@ class ADTTest extends FunSuite {
   test("Color test") {
     val generated = generate(RNG(20))
     generated match {
-      case Right(value) => {
-        assert(ColorHalf(Red).play(value, 25) === Win(50))
-        assert(ColorHalf(Black).play(value, 25) === Lose)
-      }
+      case Right(value) =>
+        assert(BetUtils.play(ColorHalf(Red), value, 25) === Win(50))
+        assert(BetUtils.play(ColorHalf(Black), value, 25) === Lose)
       case _ =>
     }
   }

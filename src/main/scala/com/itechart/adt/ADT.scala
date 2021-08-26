@@ -74,7 +74,7 @@ object ADT {
     }
 
     def play(bet: Bet, generatedSquare: Square, amount: Int): GameResult = {
-      if (condition(bet, generatedSquare)) Win(amount * multiplier)
+      if (condition(bet, generatedSquare)) Win(amount * multiplier(bet))
       else Lose
     }
   }

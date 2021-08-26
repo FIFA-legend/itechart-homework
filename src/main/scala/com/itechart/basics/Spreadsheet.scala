@@ -182,6 +182,77 @@ object Spreadsheet {
     }
   }
 
+  /*trait Converter {
+    def convert(list: List[(String, Cell)]): List[(Any, Cell)]
+  }
+
+  class SpreadsheetConverter extends Converter {
+    override def convert(list: List[(String, Cell)]): List[(Any, Cell)] = {
+      list.map { case (str, cell) => (processCell(str, list), cell) }
+    }
+
+    private def processCell(string: String, list: List[(String, Cell)]): Any = {
+      string match {
+        case s if s.isEmpty => s
+        case s if s.startsWith("\'") => s.substring(1)
+        case s if Try(s.toInt).isSuccess => s.toInt
+        case s if s.startsWith("=") => processExpression(s.substring(1), list)
+        case _ => "#Error: Wrong message type"
+      }
+    }
+
+    private def processExpression(line: String, list: List[(String, Cell)]): Any = {
+      val operations = line.toCharArray.toList.filter(ch => isOperation(ch))
+      val operands = line.split("[*+\\-/]")
+      if (operations.length + 1 != operands.length) "#Error: Wrong arithmetic"
+      else {
+        val eitherList = operands.map(op => processOperand(op, list))
+        if (eitherList.count(either => either.isLeft) > 0) eitherList.filter(either => either.isLeft)(0)
+        else {
+          val ints = eitherList.map(either => either.getOrElse(0))
+          var result = ints(0)
+          var i = 0
+          while (i < operations.length) {
+            result = performOperation(result, ints(i + 1), operations(i))
+            i = i + 1
+          }
+          result
+        }
+      }
+    }
+
+    private def performOperation(a: Int, b: Int, op: Char): Int = {
+      op match {
+        case '+' => a + b
+        case '-' => a - b
+        case '*' => a * b
+        case '/' => a / b
+      }
+    }
+
+    private def isOperation(char: Char): Boolean = {
+      char == '+' || char == '-' || char == '*' || char == '/'
+    }
+
+    private def processOperand(str: String, list: List[(String, Cell)]): Either[String, Int] = {
+      val pattern = Pattern.compile("^(\\D+)(\\d+)$")
+      val matcher = pattern.matcher(str)
+      str match {
+        case s if Try(s.toInt).isSuccess => Right(s.toInt)
+        case s if matcher.matches() =>
+          val optionCell = list.find { case (_, cell) => s == cell }
+          optionCell match {
+            case Some(value) =>
+              val returnedValue = processCell(value._1, list)
+              if (Try(returnedValue.toString.toInt).isSuccess) Right(returnedValue.toString.toInt)
+              else Left("#Error: Wrong cell reference")
+            case None => Left("#Error: Wrong cell reference")
+          }
+        case _ => Left("#Error: Wrong operand")
+      }
+    }
+  }*/
+
   trait SpreadsheetWriter {
     def write(list: List[(String, Cell)]): Either[ErrorMessage, Unit]
 

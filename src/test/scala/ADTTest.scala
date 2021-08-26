@@ -1,22 +1,22 @@
 import com.itechart.adt.ADT.Bet.{ColorHalf, Split, StraightUp, Street}
-import com.itechart.adt.ADT.{BetUtils, Black, Lose, RNG, Red, Square, Win, generate}
-import org.scalatest.FunSuite
+import com.itechart.adt.ADT.*
+import org.scalatest.flatspec.AnyFlatSpec
 
-class ADTTest extends FunSuite {
+class ADTTest extends AnyFlatSpec {
 
-  test("RNG Test") {
+  "A generator" should "generate number according to its seed" in {
     val (int, _) = RNG(20).nextInt(37)
     assert(int === 14)
   }
 
-  test("Square creation") {
+  "A test" should "check square creation" in {
     val square1 = Square.create(20)
     val square2 = Square.create(39)
     assert(square1.isRight)
     assert(square2.isLeft)
   }
 
-  test("Straight up test") {
+  "This test" should "check Straight Up work" in {
     val bet1 = Square.create(14)
     val bet2 = Square.create(17)
     val generated = generate(RNG(20))
@@ -28,7 +28,7 @@ class ADTTest extends FunSuite {
     }
   }
 
-  test("Split test") {
+  "This test" should "check Split work" in {
     val bet1 = Square.create(11)
     val bet2 = Square.create(17)
     val generated = generate(RNG(20))
@@ -40,7 +40,7 @@ class ADTTest extends FunSuite {
     }
   }
 
-  test("Street test") {
+  "This test" should "check Street work" in {
     val bet1 = Square.create(13)
     val bet2 = Square.create(17)
     val generated = generate(RNG(20))
@@ -52,7 +52,7 @@ class ADTTest extends FunSuite {
     }
   }
 
-  test("Color test") {
+  "This test" should "check Color work" in {
     val generated = generate(RNG(20))
     generated match {
       case Right(value) =>

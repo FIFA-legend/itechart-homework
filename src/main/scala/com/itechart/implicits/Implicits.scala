@@ -54,13 +54,11 @@ object Implicits {
     case class HDEYears(value: Long)
 
     def secondBiggestValue[T](values: Seq[T])(implicit ord: Ordering[T]): Option[T] = {
-      val option = values.sorted
-        .zipWithIndex
-        .find { case (_, index) => index == 1 }
-      option match {
-        case Some((t, _)) => Some(t)
-        case None => None
-      }
+      if (values.length < 2) None
+      else Some(
+        values.sorted
+        .tail.head
+      )
     }
 
     object instances {
@@ -133,58 +131,10 @@ object Implicits {
       def zero: T
     }
 
-    implicit val intSummable: Summable[Int] = new Summable[Int] {
-      override def plus(left: Int, right: Int): Int = left + right
+    implicit def numericSummable[T](implicit numeric: Numeric[T]): Summable[T] = new Summable[T] {
+      override def plus(left: T, right: T): T = numeric.plus(left, right)
 
-      override def zero: Int = 0
-    }
-
-    implicit val shortSummable: Summable[Short] = new Summable[Short] {
-      override def plus(left: Short, right: Short): Short = (left + right).toShort
-
-      override def zero: Short = 0.toShort
-    }
-
-    implicit val byteSummable: Summable[Byte] = new Summable[Byte] {
-      override def plus(left: Byte, right: Byte): Byte = (left + right).toByte
-
-      override def zero: Byte = 0.toByte
-    }
-
-    implicit val charSummable: Summable[Char] = new Summable[Char] {
-      override def plus(left: Char, right: Char): Char = (left + right).toChar
-
-      override def zero: Char = 0.toChar
-    }
-
-    implicit val longSummable: Summable[Long] = new Summable[Long] {
-      override def plus(left: Long, right: Long): Long = left + right
-
-      override def zero: Long = 0L
-    }
-
-    implicit val floatSummable: Summable[Float] = new Summable[Float] {
-      override def plus(left: Float, right: Float): Float = left + right
-
-      override def zero: Float = 0.0f
-    }
-
-    implicit val doubleSummable: Summable[Double] = new Summable[Double] {
-      override def plus(left: Double, right: Double): Double = left + right
-
-      override def zero: Double = 0.0
-    }
-
-    implicit val bigIntSummable: Summable[BigInt] = new Summable[BigInt] {
-      override def plus(left: BigInt, right: BigInt): BigInt = left + right
-
-      override def zero: BigInt = BigInt(0)
-    }
-
-    implicit val bigDecimalSummable: Summable[BigDecimal] = new Summable[BigDecimal] {
-      override def plus(left: BigDecimal, right: BigDecimal): BigDecimal = left + right
-
-      override def zero: BigDecimal = BigDecimal(0.0)
+      override def zero: T = numeric.zero
     }
 
     implicit def setSummable[T](): Summable[Set[T]] = new Summable[Set[T]] {
@@ -192,8 +142,6 @@ object Implicits {
 
       override def zero: Set[T] = Set.empty
     }
-
-    //implicit val setIntSummable: Summable[Set[Int]] = setSummable()
 
     def genericSum[T[_], A](collection: T[A])(implicit foldable: Foldable[T], summable: Summable[A]): A = {
       foldable.foldLeft(collection, summable.zero)(summable.plus)
@@ -213,7 +161,7 @@ object Implicits {
     println(sum(Seq(CustomNumber(17.2f), CustomNumber(35.2f), CustomNumber(14.2f))))
     import Exercise4._
     implicit val setIntSummable: Exercise4.Summable[Set[Int]] = Exercise4.setSummable()
-    println(genericSum(Triple(Set(1), Set(2), Set(3))))
+    println(genericSum(List(1, 2, 3, 4, 5, 6)))
   }
 
 }

@@ -3,11 +3,11 @@ package com.itechart.error_handling
 import cats.data.ValidatedNec
 import cats.syntax.all.*
 import com.itechart.error_handling.ErrorHandlingHomework.AccountValidationError.*
-import eu.timepit.refined.W
-import eu.timepit.refined.api.Refined
+import eu.timepit.refined.{refineV, W}
+import eu.timepit.refined.api.{RefType, Refined, Validate}
 import eu.timepit.refined.numeric.Interval.Closed
 import eu.timepit.refined.string.MatchesRegex
-import eu.timepit.refined.api.RefType
+import eu.timepit.refined.auto.*
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -15,13 +15,13 @@ import scala.util.Try
 
 object ErrorHandlingHomework {
 
-  type Owner = String Refined MatchesRegex[W.`"^([A-Za-z]+ ?){2}$"`.T]
-  type Age = Int Refined Closed[W.`18`.T, W.`100`.T]
+  type Owner          = String Refined MatchesRegex[W.`"^([A-Za-z]+ ?){2}$"`.T]
+  type Age            = Int Refined Closed[W.`18`.T, W.`100`.T]
   type PassportNumber = String Refined MatchesRegex[W.`"^[A-Z]{2}[0-9]{7}$"`.T]
 
-  type CardNumber = String Refined MatchesRegex[W.`"^([0-9]{4}-?){4}$"`.T]
+  type CardNumber     = String Refined MatchesRegex[W.`"^([0-9]{4}-?){4}$"`.T]
   type ExpirationDate = String Refined MatchesRegex[W.`"^(0[1-9]|1[1-2])/(2[1-9])$"`.T]
-  type SecurityCode = String Refined MatchesRegex[W.`"^[0-9]{3}$"`.T]
+  type SecurityCode   = String Refined MatchesRegex[W.`"^[0-9]{3}$"`.T]
 
   final case class Account(person: Person, card: PaymentCard)
   final case class Person(owner: Owner, age: Age, birthDay: LocalDate, passportNumber: PassportNumber) // birthDay
@@ -73,24 +73,29 @@ object ErrorHandlingHomework {
 
     type AllErrorsOr[A] = ValidatedNec[AccountValidationError, A]
 
+    def validateParameter[T, P](
+      parameter: T,
+      error:     AccountValidationError
+    )(
+      implicit v: Validate[T, P]
+    ): AllErrorsOr[Refined[T, P]] = {
+      refineV(parameter).left
+        .map(_ => error)
+        .toValidatedNec
+    }
+
     def validatePerson(personDto: PersonDto): AllErrorsOr[Person] = {
       def validateOwner(rawOwner: String): AllErrorsOr[Owner] = {
-        RefType.applyRef[Owner](rawOwner)
-          .left.map(_ => InvalidOwner)
-          .toValidatedNec
+        validateParameter(rawOwner, InvalidOwner)
       }
 
       def validateAge(rawAge: String): AllErrorsOr[Age] = {
         if (Try(rawAge.toInt).isFailure) AgeIsNotNumeric.invalidNec
-        else RefType.applyRef[Age](rawAge.toInt)
-          .left.map(_ => AgeIsOutOfBounds)
-          .toValidatedNec
+        else validateParameter(rawAge.toInt, AgeIsOutOfBounds)
       }
 
       def validatePassportNumber(rawPassportNumber: String): AllErrorsOr[PassportNumber] = {
-        RefType.applyRef[PassportNumber](rawPassportNumber)
-          .left.map(_ => InvalidPassportNumber)
-          .toValidatedNec
+        validateParameter(rawPassportNumber, InvalidPassportNumber)
       }
 
       def validateBirthDay(rawBirthDay: String): AllErrorsOr[LocalDate] = {
@@ -98,8 +103,10 @@ object ErrorHandlingHomework {
         if (Try(LocalDate.parse(rawBirthDay, formatter)).isFailure) DateIsNotNumeric.invalidNec
         else {
           val birthday = LocalDate.parse(rawBirthDay, formatter)
-          if (birthday.isAfter(LocalDate.parse("1920-01-01", formatter)) &&
-          birthday.isBefore(LocalDate.parse("2004-01-01", formatter))) birthday.validNec
+          if (
+            birthday.isAfter(LocalDate.parse("1920-01-01", formatter)) &&
+            birthday.isBefore(LocalDate.parse("2004-01-01", formatter))
+          ) birthday.validNec
           else DateIsOutOfBounds.invalidNec
         }
       }
@@ -114,21 +121,15 @@ object ErrorHandlingHomework {
 
     def validatePaymentCard(cardDto: PaymentCardDto): AllErrorsOr[PaymentCard] = {
       def validateCardNumber(rawCardNumber: String): AllErrorsOr[CardNumber] = {
-        RefType.applyRef[CardNumber](rawCardNumber)
-          .left.map(_ => InvalidCardNumber)
-          .toValidatedNec
+        validateParameter(rawCardNumber, InvalidCardNumber)
       }
 
       def validateExpirationDate(rawExpirationDate: String): AllErrorsOr[ExpirationDate] = {
-        RefType.applyRef[ExpirationDate](rawExpirationDate)
-          .left.map(_ => InvalidExpirationDate)
-          .toValidatedNec
+        validateParameter(rawExpirationDate, InvalidExpirationDate)
       }
 
       def validateSecurityCode(rawSecurityCode: String): AllErrorsOr[SecurityCode] = {
-        RefType.applyRef[SecurityCode](rawSecurityCode)
-          .left.map(_ => InvalidSecurityCode)
-          .toValidatedNec
+        validateParameter(rawSecurityCode, InvalidSecurityCode)
       }
 
       (
@@ -144,7 +145,12 @@ object ErrorHandlingHomework {
   }
 
   def main(args: Array[String]): Unit = {
-
+    println(
+      AccountValidator.validate(
+        PersonDto("Nikita Kolodko", "20", "2001-08-05", "KN0123456"),
+        PaymentCardDto("1234-5678-8765-4321", "08/22", "567")
+      )
+    )
   }
 
 }

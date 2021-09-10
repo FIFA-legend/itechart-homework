@@ -7,8 +7,7 @@ object ErrorHandlingLesson {
   // Exercise 1. Implement `parseIntEither` method, returning the parsed integer as `Right` upon success and
   // "{{string}} does not contain an integer" as `Left` upon failure.
   def parseIntEither(string: String): Either[String, Int] = {
-    Try(string.toInt).toEither
-      .left.map(_.toString)
+    Try(string.toInt).toEither.left.map(_.toString)
   }
 
   final case class Student(username: String, age: Int)
@@ -69,4 +68,5 @@ object ErrorHandlingLesson {
   def validate(username: String, age: String): AllErrorsOr[Student] = (
     validateUsername(username),
     validateAge(age)
-    ).mapN(Student)}
+  ).mapN(Student)
+}

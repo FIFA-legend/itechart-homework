@@ -1,12 +1,13 @@
 package com.itechart.json
 
-import io.circe._
+import io.circe.*
 import io.circe.generic.JsonCodec
-import io.circe.parser._
-import io.circe.syntax._
+import io.circe.parser.*
+import io.circe.syntax.*
+import io.circe.generic.extras.*
+import io.circe.generic.extras.semiauto.*
 
-import io.circe.generic.extras._
-import io.circe.generic.extras.semiauto._
+import scala.io.Source
 
 object Circe {
 
@@ -76,21 +77,40 @@ object Circe {
     Decoder.forProduct5("postId", "id", "name", "email", "body")(Comment)
 
   def main(args: Array[String]): Unit = {
-    val postList = decode[List[Post]](TestData.posts)
+    val postSource = Source.fromURL("https://jsonplaceholder.typicode.com/posts")
+    val rawPosts   = postSource.getLines().foldLeft("")(_ + _)
+    val postList   = decode[List[Post]](rawPosts)
     println(postList)
     println(postList.getOrElse(List.empty).asJson)
-    val commentList = decode[List[Comment]](TestData.comments)
+    postSource.close()
+
+    val commentSource = Source.fromURL("https://jsonplaceholder.typicode.com/comments")
+    val rawComments   = commentSource.getLines().foldLeft("")(_ + _)
+    val commentList   = decode[List[Comment]](rawComments)
     println(commentList)
     println(commentList.getOrElse(List.empty).asJson)
-    val albumList = decode[List[Album]](TestData.albums)
+    commentSource.close()
+
+    val albumSource = Source.fromURL("https://jsonplaceholder.typicode.com/albums")
+    val rawAlbums   = albumSource.getLines().foldLeft("")(_ + _)
+    val albumList   = decode[List[Album]](rawAlbums)
     println(albumList)
     println(albumList.getOrElse(List.empty).asJson)
-    val todoList = decode[List[Todo]](TestData.todos)
+    albumSource.close()
+
+    val todoSource = Source.fromURL("https://jsonplaceholder.typicode.com/todos")
+    val rawTodos   = todoSource.getLines().foldLeft("")(_ + _)
+    val todoList   = decode[List[Todo]](rawTodos)
     println(todoList)
     println(todoList.getOrElse(List.empty).asJson)
-    val userList = decode[List[User]](TestData.users)
+    todoSource.close()
+
+    val userSource = Source.fromURL("https://jsonplaceholder.typicode.com/users")
+    val rawUsers   = userSource.getLines().foldLeft("")(_ + _)
+    val userList   = decode[List[User]](rawUsers)
     println(userList)
     println(userList.getOrElse(List.empty).asJson)
+    userSource.close()
   }
 
 }

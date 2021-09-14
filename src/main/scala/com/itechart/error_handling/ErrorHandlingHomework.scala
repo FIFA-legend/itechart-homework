@@ -1,13 +1,13 @@
 package com.itechart.error_handling
 
 import cats.data.ValidatedNec
-import cats.syntax.all.*
-import com.itechart.error_handling.ErrorHandlingHomework.AccountValidationError.*
+import cats.syntax.all._
+import com.itechart.error_handling.ErrorHandlingHomework.AccountValidationError._
 import eu.timepit.refined.{refineV, W}
 import eu.timepit.refined.api.{RefType, Refined, Validate}
 import eu.timepit.refined.numeric.Interval.Closed
 import eu.timepit.refined.string.MatchesRegex
-import eu.timepit.refined.auto.*
+import eu.timepit.refined.auto._
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -119,19 +119,19 @@ object ErrorHandlingHomework {
       ).mapN(Person)
     }
 
+    def validateCardNumber(rawCardNumber: String): AllErrorsOr[CardNumber] = {
+      validateParameter(rawCardNumber, InvalidCardNumber)
+    }
+
+    def validateExpirationDate(rawExpirationDate: String): AllErrorsOr[ExpirationDate] = {
+      validateParameter(rawExpirationDate, InvalidExpirationDate)
+    }
+
+    def validateSecurityCode(rawSecurityCode: String): AllErrorsOr[SecurityCode] = {
+      validateParameter(rawSecurityCode, InvalidSecurityCode)
+    }
+
     def validatePaymentCard(cardDto: PaymentCardDto): AllErrorsOr[PaymentCard] = {
-      def validateCardNumber(rawCardNumber: String): AllErrorsOr[CardNumber] = {
-        validateParameter(rawCardNumber, InvalidCardNumber)
-      }
-
-      def validateExpirationDate(rawExpirationDate: String): AllErrorsOr[ExpirationDate] = {
-        validateParameter(rawExpirationDate, InvalidExpirationDate)
-      }
-
-      def validateSecurityCode(rawSecurityCode: String): AllErrorsOr[SecurityCode] = {
-        validateParameter(rawSecurityCode, InvalidSecurityCode)
-      }
-
       (
         validateCardNumber(cardDto.cardNumber),
         validateExpirationDate(cardDto.expirationDate),

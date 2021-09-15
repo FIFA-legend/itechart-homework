@@ -19,12 +19,12 @@ object ErrorHandlingHomework {
   type Age            = Int Refined Closed[W.`18`.T, W.`100`.T]
   type PassportNumber = String Refined MatchesRegex[W.`"^[A-Z]{2}[0-9]{7}$"`.T]
 
-  type CardNumber     = String Refined MatchesRegex[W.`"^([0-9]{4}-?){4}$"`.T]
+  type CardNumber     = String Refined MatchesRegex[W.`"^([0-9]{4}-){3}[0-9]{4}$"`.T]
   type ExpirationDate = String Refined MatchesRegex[W.`"^(0[1-9]|1[1-2])/(2[1-9])$"`.T]
   type SecurityCode   = String Refined MatchesRegex[W.`"^[0-9]{3}$"`.T]
 
   final case class Account(person: Person, card: PaymentCard)
-  final case class Person(owner: Owner, age: Age, birthDay: LocalDate, passportNumber: PassportNumber) // birthDay
+  final case class Person(owner: Owner, age: Age, birthDay: LocalDate, passportNumber: PassportNumber)
   final case class PaymentCard(cardNumber: CardNumber, expirationDate: ExpirationDate, securityCode: SecurityCode)
 
   final case class PersonDto(owner: String, age: String, birthDay: String, passportNumber: String)
@@ -119,19 +119,19 @@ object ErrorHandlingHomework {
       ).mapN(Person)
     }
 
-    def validateCardNumber(rawCardNumber: String): AllErrorsOr[CardNumber] = {
-      validateParameter(rawCardNumber, InvalidCardNumber)
-    }
-
-    def validateExpirationDate(rawExpirationDate: String): AllErrorsOr[ExpirationDate] = {
-      validateParameter(rawExpirationDate, InvalidExpirationDate)
-    }
-
-    def validateSecurityCode(rawSecurityCode: String): AllErrorsOr[SecurityCode] = {
-      validateParameter(rawSecurityCode, InvalidSecurityCode)
-    }
-
     def validatePaymentCard(cardDto: PaymentCardDto): AllErrorsOr[PaymentCard] = {
+      def validateCardNumber(rawCardNumber: String): AllErrorsOr[CardNumber] = {
+        validateParameter(rawCardNumber, InvalidCardNumber)
+      }
+
+      def validateExpirationDate(rawExpirationDate: String): AllErrorsOr[ExpirationDate] = {
+        validateParameter(rawExpirationDate, InvalidExpirationDate)
+      }
+
+      def validateSecurityCode(rawSecurityCode: String): AllErrorsOr[SecurityCode] = {
+        validateParameter(rawSecurityCode, InvalidSecurityCode)
+      }
+
       (
         validateCardNumber(cardDto.cardNumber),
         validateExpirationDate(cardDto.expirationDate),

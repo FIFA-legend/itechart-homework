@@ -1,5 +1,6 @@
 package com.itechart.cats
 
+import cats.{Applicative, Functor}
 import cats.implicits.catsSyntaxEitherId
 
 object Cats {
@@ -58,6 +59,23 @@ object Cats {
         value <- either
       } yield list ::: List(value)
     )
+  }
+
+  trait Tree[+T]
+  object Tree extends {
+    def leaf[T](value:   T): Tree[T] = Leaf(value)
+    def branch[T](value: T, left: Tree[T], right: Tree[T]): Tree[T] = Branch(value, left, right)
+  }
+  case class Leaf[+T](value: T) extends Tree[T]
+  case class Branch[+T](value: T, left: Tree[T], right: Tree[T]) extends Tree[T]
+
+  val treeFunctor: Functor[Tree] = new Functor[Tree] {
+    override def map[A, B](fa: Tree[A])(f: A => B): Tree[B] = {
+      fa match {
+        case Leaf(value)                => Leaf(f(value))
+        case Branch(value, left, right) => Branch(f(value), map(left)(f), map(right)(f))
+      }
+    }
   }
 
   def main(args: Array[String]): Unit = {}

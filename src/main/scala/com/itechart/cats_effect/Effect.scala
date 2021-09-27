@@ -57,11 +57,11 @@ object Additional1 extends IOApp {
     *   - return the result in an IO
     *   - if errored or cancelled, return a failed IO
     */
-  def processResultsFromFiber[A](io: IO[A]): IO[Either[Throwable, A]] = {
+  def processResultsFromFiber[A](io: IO[A]): IO[A] = {
     for {
       fiber <- io
         .onCancel(IO(println("The effect was cancelled")).void)
-        .attempt
+        .onError(IO.raiseError(_))
         .start
       result <- fiber.join
     } yield result
@@ -86,8 +86,8 @@ object Additional2 extends IOApp {
     */
   def tupleIOs[A, B](ioa: IO[A], iob: IO[B]): IO[(A, B)] = {
     IO.racePair(
-      ioa.onCancel(IO(throw new RuntimeException).void),
-      iob.onCancel(IO(throw new RuntimeException).void)
+      ioa.onCancel(IO(throw new RuntimeException("IO is cancelled")).void),
+      iob.onCancel(IO(throw new RuntimeException("IO is cancelled")).void)
     ).flatMap {
       case Left((a, fb))  => (IO.pure(a), fb.join).tupled
       case Right((fa, b)) => (fa.join, IO.pure(b)).tupled
@@ -99,6 +99,32 @@ object Additional2 extends IOApp {
     val iob = IO(println(2 / 0))
     println(tupleIOs(ioa, iob).unsafeRunSync())
     tupleIOs(ioa, iob) as ExitCode.Success
+  }
+}
+
+object Additional3 extends IOApp {
+
+  /**  3. Write a function that adds a timeout to an IO:
+    *    - IO runs on a fiber
+    *    - if the timeout duration passes, then the fiber is canceled
+    *    - the method returns an IO[A] which contains
+    *      - the original value if the computation is successful before the timeout signal
+    *      - the exception if the computation is failed before the timeout signal
+    *      - a RuntimeException if it times out (i.e. cancelled by the timeout)
+    */
+  def timeout[A](io: IO[A], duration: FiniteDuration): IO[A] = {
+    val sleep = IO.sleep(duration)
+    IO.racePair(io, sleep).flatMap {
+      case Left((a, fb))  => IO.pure(a)
+      case Right((fa, b)) => fa.cancel *> IO.raiseError(new RuntimeException("IO is cancelled"))
+    }
+  }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    val io = IO((1 to 10000).toList.sum)
+    println(timeout(io, 2.seconds).unsafeRunSync())
+    println(timeout(io, 2.nanoseconds).unsafeRunSync())
+    timeout(io, 2.seconds) as ExitCode.Success
   }
 }
 

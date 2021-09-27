@@ -1,8 +1,10 @@
 package com.itechart.cats_effect
 
+import cats.effect.implicits.catsEffectSyntaxBracket
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.implicits.{catsSyntaxOptionId, none}
+import cats.implicits.{catsSyntaxApplicativeError, catsSyntaxOptionId, catsSyntaxTuple2Semigroupal, none}
 
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.io.StdIn
 
 object Effect {
@@ -46,6 +48,57 @@ object Effect {
     val iob = IO(5)
     println(sequenceTakeFirst(iob, ioa).unsafeRunSync())
     println((iob <* ioa).unsafeRunSync())
+  }
+}
+
+object Additional1 extends IOApp {
+
+  /** 1. Write a function that runs an IO on another thread, and, depending on the result of the fiber
+    *   - return the result in an IO
+    *   - if errored or cancelled, return a failed IO
+    */
+  def processResultsFromFiber[A](io: IO[A]): IO[Either[Throwable, A]] = {
+    for {
+      fiber <- io
+        .onCancel(IO(println("The effect was cancelled")).void)
+        .attempt
+        .start
+      result <- fiber.join
+    } yield result
+  }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    val ioa = IO(4 / 2)
+    val iob = IO(4 / 0)
+    println(processResultsFromFiber(ioa).unsafeRunSync())
+    println(processResultsFromFiber(iob).unsafeRunSync())
+    processResultsFromFiber(ioa) as ExitCode.Success
+  }
+}
+
+object Additional2 extends IOApp {
+
+  /** 2. Write a function that takes two IOs, runs them on different fibers and returns an IO with a tuple containing both results.
+    *   - if both IOs complete successfully, tuple their results
+    *   - if the first IO returns an error, raise that error (ignoring the second IO's result/error)
+    *   - if the first IO doesn't error but second IO returns an error, raise that error
+    *   - if one (or both) canceled, raise a RuntimeException
+    */
+  def tupleIOs[A, B](ioa: IO[A], iob: IO[B]): IO[(A, B)] = {
+    IO.racePair(
+      ioa.onCancel(IO(throw new RuntimeException).void),
+      iob.onCancel(IO(throw new RuntimeException).void)
+    ).flatMap {
+      case Left((a, fb))  => (IO.pure(a), fb.join).tupled
+      case Right((fa, b)) => (fa.join, IO.pure(b)).tupled
+    }
+  }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    val ioa = IO("a")
+    val iob = IO(println(2 / 0))
+    println(tupleIOs(ioa, iob).unsafeRunSync())
+    tupleIOs(ioa, iob) as ExitCode.Success
   }
 }
 

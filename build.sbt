@@ -8,8 +8,7 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-Ymacro-annotations",
-  "-Xfatal-warnings",
-  "-Xsource:3"
+  "-Xfatal-warnings"
 )
 
 ThisBuild / scalafmtOnCompile := true
@@ -75,3 +74,9 @@ libraryDependencies ++= Seq(
   "io.circe"                 %% "circe-optics"                  % circeVersion,
   "io.circe"                 %% "circe-parser"                  % circeVersion
 )
+
+addCompilerPlugin(
+  "org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full
+)
+
+run / fork := true

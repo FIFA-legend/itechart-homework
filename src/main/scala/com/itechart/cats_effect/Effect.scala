@@ -115,8 +115,8 @@ object Additional3 extends IOApp {
   def timeout[A](io: IO[A], duration: FiniteDuration): IO[A] = {
     val sleep = IO.sleep(duration)
     IO.racePair(io, sleep).flatMap {
-      case Left((a, fb))  => IO.pure(a)
-      case Right((fa, b)) => fa.cancel *> IO.raiseError(new RuntimeException("IO is cancelled"))
+      case Left((a, fb))  => fb.cancel *> IO.pure(a)
+      case Right((fa, _)) => fa.cancel *> IO.raiseError(new RuntimeException("IO is cancelled"))
     }
   }
 

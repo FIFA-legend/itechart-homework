@@ -15,7 +15,7 @@ import com.itechart.error_handling.ErrorHandlingHomework.{
   SecurityCode
 }
 import org.scalatest.freespec.AnyFreeSpec
-import eu.timepit.refined.auto.*
+import eu.timepit.refined.auto._
 
 class PaymentCardValidationSpec extends AnyFreeSpec {
 

@@ -11,7 +11,7 @@ import com.itechart.error_handling.ErrorHandlingHomework.AccountValidationError.
 import com.itechart.error_handling.ErrorHandlingHomework.AccountValidator.validatePerson
 import com.itechart.error_handling.ErrorHandlingHomework.{Age, Owner, PassportNumber, Person, PersonDto}
 import org.scalatest.freespec.AnyFreeSpec
-import eu.timepit.refined.auto.*
+import eu.timepit.refined.auto._
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

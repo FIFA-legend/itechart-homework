@@ -3,11 +3,10 @@ package com.itechart.error_handling
 import cats.data.ValidatedNec
 import cats.syntax.all._
 import com.itechart.error_handling.ErrorHandlingHomework.AccountValidationError._
-import eu.timepit.refined.{refineV, W}
-import eu.timepit.refined.api.{RefType, Refined, Validate}
+import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.numeric.Interval.Closed
 import eu.timepit.refined.string.MatchesRegex
-import eu.timepit.refined.auto._
+import eu.timepit.refined.{refineV, W}
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

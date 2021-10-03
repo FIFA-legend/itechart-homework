@@ -1,5 +1,5 @@
 import com.itechart.adt.ADT.Bet.{ColorHalf, Split, StraightUp, Street}
-import com.itechart.adt.ADT.*
+import com.itechart.adt.ADT._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class ADTTest extends AnyFlatSpec {
@@ -17,8 +17,8 @@ class ADTTest extends AnyFlatSpec {
   }
 
   "This test" should "check Straight Up work" in {
-    val bet1 = Square.create(14)
-    val bet2 = Square.create(17)
+    val bet1      = Square.create(14)
+    val bet2      = Square.create(17)
     val generated = generate(RNG(20))
     (bet1, bet2, generated) match {
       case (Right(value1), Right(value2), Right(value3)) =>
@@ -29,8 +29,8 @@ class ADTTest extends AnyFlatSpec {
   }
 
   "This test" should "check Split work" in {
-    val bet1 = Square.create(11)
-    val bet2 = Square.create(17)
+    val bet1      = Square.create(11)
+    val bet2      = Square.create(17)
     val generated = generate(RNG(20))
     (bet1, bet2, generated) match {
       case (Right(value1), Right(value2), Right(value3)) =>
@@ -41,8 +41,8 @@ class ADTTest extends AnyFlatSpec {
   }
 
   "This test" should "check Street work" in {
-    val bet1 = Square.create(13)
-    val bet2 = Square.create(17)
+    val bet1      = Square.create(13)
+    val bet2      = Square.create(17)
     val generated = generate(RNG(20))
     (bet1, bet2, generated) match {
       case (Right(value1), Right(value2), Right(value3)) =>

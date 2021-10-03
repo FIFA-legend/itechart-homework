@@ -1,6 +1,6 @@
 package com.itechart.cats
 
-import cats.{Applicative, Functor}
+import cats.{Functor}
 import cats.implicits.catsSyntaxEitherId
 
 object Cats {

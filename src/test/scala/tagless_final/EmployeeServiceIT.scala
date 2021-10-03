@@ -16,7 +16,7 @@ import eu.timepit.refined.auto._
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class EmployeeServiceTests extends AnyFreeSpec {
+class EmployeeServiceIT extends AnyFreeSpec {
 
   val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 

@@ -69,7 +69,7 @@ object RefsExerciseTwo extends IOApp {
     } yield ()
 
     val errorProgram = IO {
-      println("Gonna Boom!");
+      println("Gonna Boom!")
       throw new IllegalArgumentException("BOOM")
     }
 

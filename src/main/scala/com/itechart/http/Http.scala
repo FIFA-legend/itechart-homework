@@ -1,20 +1,18 @@
 package com.itechart.http
 
-import cats.MonadError
 import cats.data.{EitherT, Kleisli}
 import cats.effect.{Blocker, ExitCode, IO, IOApp}
-import cats.implicits.{catsSyntaxEitherId, catsSyntaxFlatMapOps, toSemigroupKOps, toTraverseOps}
+import cats.implicits.{catsSyntaxEitherId, toSemigroupKOps}
 import com.itechart.http.Result.{Greater, Lose, Lower, Win}
 import io.circe.generic.JsonCodec
-import io.circe.syntax.EncoderOps
 import org.http4s._
-import org.http4s.implicits._
-import org.http4s.server.blaze.BlazeServerBuilder
-import org.http4s.circe.CirceEntityCodec._
-import org.http4s.client.Client
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.dsl.io._
+import org.http4s.implicits._
+import org.http4s.circe.CirceEntityCodec._
+import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.client.Client
 import org.http4s.client.dsl.io._
+import org.http4s.client.blaze.BlazeClientBuilder
 
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 import scala.concurrent.ExecutionContext
@@ -74,22 +72,26 @@ object GuessServer extends IOApp {
 
   private val playRoute = HttpRoutes.of[IO] { case req @ POST -> Root / "move" =>
     req.as[Move].flatMap { move =>
-      gamesReference.get.get(move.id) match {
-        case None => BadRequest("Wrong id parameter")
-        case Some(game) =>
-          if (move.value < game.min || move.value > game.max) BadRequest("Value is out of bounds")
-          else if (move.value == game.value) {
-            gamesReference.updateAndGet(_.removed(move.id))
-            Ok(Win.toString)
-          } else if (game.attempts == 1) {
-            gamesReference.updateAndGet(_.removed(move.id))
-            Ok(Lose.toString)
-          } else {
-            gamesReference.updateAndGet(_.updated(move.id, game.copy(attempts = game.attempts - 1)))
-            if (move.value < game.value) Ok(Greater.toString)
-            else Ok(Lower.toString)
-          }
+      val gameMap = gamesReference.get()
+      gameMap.get(move.id) match {
+        case None       => BadRequest("Wrong id parameter")
+        case Some(game) => makeDecision(move, game)
       }
+    }
+  }
+
+  def makeDecision(move: Move, game: Game): IO[Response[IO]] = {
+    if (move.value < game.min || move.value > game.max) BadRequest("Value is out of bounds")
+    else if (move.value == game.value) {
+      gamesReference.updateAndGet(_.removed(move.value))
+      Ok(Win.toString)
+    } else if (game.attempts == 1) {
+      gamesReference.updateAndGet(_.removed(move.value))
+      Ok(Lose.toString)
+    } else {
+      gamesReference.updateAndGet(_.updated(move.id, game.copy(attempts = game.attempts - 1)))
+      if (move.value < game.value) Ok(Greater.toString)
+      else Ok(Lower.toString)
     }
   }
 
@@ -112,7 +114,7 @@ object GuessClient extends IOApp {
           tuple               <- configureGame()
           (min, max, attempts) = tuple
           id                  <- client.expect[Long](Method.POST(CreateGame(min, max, attempts), uri / "create"))
-          _                   <- playGame(id, client)
+          _                   <- playGame(id, min, max, client)
         } yield ()
       }
       .as(ExitCode.Success)
@@ -130,43 +132,25 @@ object GuessClient extends IOApp {
     }
   }
 
-  def playGame(id: Long, client: Client[IO]): IO[Unit] = {
+  def playGame(id: Long, min: Int, max: Int, client: Client[IO]): IO[Unit] = {
     for {
-      value  <- attempt()
+      value  <- attempt(min, max)
       result <- client.expect[Result](Method.POST(Move(id, value), uri / "move"))
-      _      <- routePlay(id, client).apply(result)
+      _      <- routePlay(id, min, max, value, client).apply(result)
     } yield ()
   }
 
-  def routePlay[F[_]](id: Long, client: Client[IO]): Kleisli[IO, Result, Unit] = Kleisli[IO, Result, Unit] {
-    case Result.Win     => IO(println("Congratulations, You won!"))
-    case Result.Lose    => IO(println("Sorry, You lose :("))
-    case Result.Lower   => IO(println("The hidden number is lower")) *> playGame(id, client)
-    case Result.Greater => IO(println("The hidden number is greater")) *> playGame(id, client)
-  }
-
-  def attempt(): IO[Int] = {
-    for {
-      userInput    <- inputUserAttempt()
-      parsedResult <- routeUserAttempt.apply(userInput)
-    } yield parsedResult
-  }
-
-  def routeUserAttempt[F[_]]: Kleisli[IO, Option[Int], Int] =
-    Kleisli[IO, Option[Int], Int] {
-      case Some(value) => IO(value)
-      case None        => attempt()
+  def routePlay[F[_]](id: Long, min: Int, max: Int, value: Int, client: Client[IO]): Kleisli[IO, Result, Unit] =
+    Kleisli[IO, Result, Unit] {
+      case Result.Win  => IO(println(s"Congratulations, You won! Hidden value $value"))
+      case Result.Lose => IO(println("Sorry, You lose :("))
+      case Result.Lower =>
+        IO(println(s"The hidden number is lower than $value")) *> playGame(id, min, value - 1, client)
+      case Result.Greater =>
+        IO(println(s"The hidden number is greater than $value")) *> playGame(id, value + 1, max, client)
     }
 
-  def inputUserAttempt(): IO[Option[Int]] = {
-    for {
-      _           <- printLine("Input your choice:")
-      userValue   <- readLine
-      parsedValue <- parseAttemptValue(userValue)
-    } yield parsedValue
-  }
-
-  def parseAttemptValue(s: String): IO[Option[Int]] = IO(Try(s.toInt).toOption)
+  def attempt(min: Int, max: Int): IO[Int] = IO((min + max) / 2)
 
   def configureGame(): IO[(Int, Int, Int)] = {
     for {

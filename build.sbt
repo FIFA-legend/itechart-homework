@@ -72,7 +72,8 @@ libraryDependencies ++= Seq(
   "io.circe"                 %% "circe-generic"                 % circeVersion,
   "io.circe"                 %% "circe-generic-extras"          % circeVersion,
   "io.circe"                 %% "circe-optics"                  % circeVersion,
-  "io.circe"                 %% "circe-parser"                  % circeVersion
+  "io.circe"                 %% "circe-parser"                  % circeVersion,
+  "mysql"                     % "mysql-connector-java"          % "8.0.20"
 )
 
 addCompilerPlugin(

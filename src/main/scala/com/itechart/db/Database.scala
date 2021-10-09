@@ -1,7 +1,6 @@
 package com.itechart.db
 
 import cats.data.{Kleisli, OptionT, ValidatedNec}
-import cats.effect.concurrent.Ref
 import cats.effect.{Async, Blocker, ContextShift, ExitCode, IO, IOApp, Resource, Sync}
 import cats.implicits.catsSyntaxValidatedIdBinCompat0
 import cats.syntax.all._

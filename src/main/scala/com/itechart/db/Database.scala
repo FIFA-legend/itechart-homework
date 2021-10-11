@@ -1,10 +1,9 @@
 package com.itechart.db
 
-import cats.data.{Kleisli, OptionT, ValidatedNec}
-import cats.effect.{Async, Blocker, ContextShift, ExitCode, IO, IOApp, Resource, Sync}
+import cats.data.{Validated, ValidatedNec}
+import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift, ExitCode, IO, IOApp, Resource, Sync, Timer}
 import cats.implicits.catsSyntaxValidatedIdBinCompat0
 import cats.syntax.all._
-import cats.{Applicative, MonadError}
 import com.itechart.db.EmployeeValidator.AllErrorsOr
 import com.itechart.db.EmployeeValidator.EmployeeValidationError._
 import com.itechart.db.employee._
@@ -19,10 +18,20 @@ import eu.timepit.refined.string.MatchesRegex
 import eu.timepit.refined.types.string.NonEmptyString
 import eu.timepit.refined.{refineV, W}
 import eu.timepit.refined.auto._
+import io.circe.Encoder
+import io.circe.generic.JsonCodec
+import io.circe.generic.extras.Configuration
+import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
+import org.http4s._
+import org.http4s.circe.CirceEntityCodec._
+import org.http4s.dsl.Http4sDsl
+import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
+import org.http4s.server.Server
+import org.http4s.server.blaze.BlazeServerBuilder
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import scala.io.StdIn
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 object employee {
@@ -32,13 +41,28 @@ object employee {
   type Position = NonEmptyString
   type Salary   = Int Refined Greater[W.`200`.T]
 
-  final case class Employee(
+  implicit val config: Configuration = Configuration.default
+
+  implicit val nameEncoder:     Encoder[Name]     = Encoder.encodeString.contramap[Name](_.toString)
+  implicit val salaryEncoder:   Encoder[Salary]   = Encoder.encodeString.contramap[Salary](_.toString)
+  implicit val positionEncoder: Encoder[Position] = Encoder.encodeString.contramap[Position](_.toString)
+  implicit val employeeEncoder: Encoder[Employee] = deriveConfiguredEncoder[Employee]
+
+  case class Employee(
     id:        Long,
     birthday:  LocalDate,
     firstName: Name,
     lastName:  Surname,
     salary:    Salary,
     position:  Position,
+  )
+
+  @JsonCodec case class EmployeeDto(
+    birthday:  String,
+    firstName: String,
+    lastName:  String,
+    salary:    String,
+    position:  String,
   )
 
 }
@@ -325,152 +349,135 @@ object EmployeeService {
   }
 }
 
-trait Console[F[_]] {
-  def writeLine(line: String): F[Unit]
-  def readLine: F[String]
-}
-
-object Console {
-
-  def apply[F[_]: Console](implicit console: Console[F]): Console[F] = console
-
-  implicit def console[F[_]: Sync]: Console[F] = new Console[F] {
-    override def writeLine(line: String): F[Unit] = Sync[F].delay(println(line))
-    override def readLine: F[String] = Sync[F].delay(StdIn.readLine())
-  }
-
-}
-
-trait ConsoleInterface[F[_]] {
-  def cmd: F[Unit]
-}
-
-object ConsoleInterface {
-
-  def apply[F[_]: Console: MonadError[*[_], Throwable]](employeeService: EmployeeService[F]): ConsoleInterface[F] =
-    new ConsoleInterface[F] {
-      override def cmd: F[Unit] = {
-        val operation = for {
-          _ <- Console[F].writeLine(
-            """Commands:
-              |1. all
-              |2. create [name] [surname] [salary (greater than 100)] [position] [birthday (yyyy-mm-dd)]
-              |3. update [id] [name] [surname] [salary (greater than 100)] [position] [birthday (yyyy-mm-dd)]
-              |4. get [id]
-              |5. delete [id]
-              |6. archive [id] [flag]""".stripMargin
-          )
-          command     <- Console[F].readLine
-          args         = command.split("\\s+").toList
-          result      <- route(employeeService).apply(args).value
-          resultString = result.getOrElse("Choose correct command")
-          _           <- Console[F].writeLine(resultString)
-        } yield ()
-
-        operation.handleErrorWith { error =>
-          Console[F].writeLine(s"ERROR: ${error.getMessage}")
-        } >> cmd
-      }
-    }
-
-  def route[F[_]: Console: MonadError[*[_], Throwable]](
-    employeeService: EmployeeService[F]
-  ): Kleisli[OptionT[F, *], List[String], String] = Kleisli[OptionT[F, *], List[String], String] {
-    case "all" :: Nil                   => allEmployees(employeeService)
-    case "create" :: employeeParameters => createEmployee(employeeService).apply(employeeParameters)
-    case "update" :: employeeParameters => updateEmployee(employeeService).apply(employeeParameters)
-    case "get" :: id :: Nil             => getEmployee(employeeService).apply(id)
-    case "delete" :: id :: Nil          => deleteEmployee(employeeService).apply(id)
-    case "archive" :: id :: flag :: Nil => archiveEmployee(employeeService).apply(id, flag)
-    case _                              => OptionT.none[F, String]
-  }
-
-  private def allEmployees[F[_]: Applicative](employeeService: EmployeeService[F]): OptionT[F, String] = {
-    OptionT.liftF {
-      for {
-        employees <- employeeService.all
-      } yield employees.values.toString
-    }
-  }
-
-  private def createEmployee[F[_]: Applicative](
-    employeeService: EmployeeService[F]
-  ): Kleisli[OptionT[F, *], List[String], String] = Kleisli[OptionT[F, *], List[String], String] {
-    case name :: surname :: salary :: position :: birthday :: _ =>
-      OptionT.liftF {
-        for {
-          employee <- employeeService.create(birthday, name, surname, salary, position)
-        } yield employee.toString
-      }
-    case _ => OptionT.none
-  }
-
-  private def updateEmployee[F[_]: Applicative](
-    employeeService: EmployeeService[F]
-  ): Kleisli[OptionT[F, *], List[String], String] = Kleisli[OptionT[F, *], List[String], String] {
-    case id :: name :: surname :: salary :: position :: birthday :: _ =>
-      OptionT.liftF {
-        for {
-          result <- employeeService.update(
-            Try(id.toLong).toOption.getOrElse(0L),
-            birthday,
-            name,
-            surname,
-            salary,
-            position
-          )
-        } yield result.toString
-      }
-    case _ => OptionT.none
-  }
-
-  private def getEmployee[F[_]: Applicative](
-    employeeService: EmployeeService[F]
-  ): Kleisli[OptionT[F, *], String, String] = Kleisli[OptionT[F, *], String, String] { id =>
-    OptionT.liftF {
-      for {
-        employee <- employeeService.find(Try(id.toLong).toOption.getOrElse(0L))
-      } yield employee.toString
-    }
-  }
-
-  private def deleteEmployee[F[_]: Applicative](
-    employeeService: EmployeeService[F]
-  ): Kleisli[OptionT[F, *], String, String] = Kleisli[OptionT[F, *], String, String] { id =>
-    OptionT.liftF {
-      for {
-        result <- employeeService.delete(Try(id.toLong).toOption.getOrElse(0L))
-      } yield result.toString
-    }
-  }
-
-  private def archiveEmployee[F[_]: Applicative](
-    employeeService: EmployeeService[F]
-  ): Kleisli[OptionT[F, *], (String, String), String] = Kleisli[OptionT[F, *], (String, String), String] {
-    case (id, flag) =>
-      OptionT.liftF {
-        val (parsedId, parsedFlag) = parseValuesToArchive(id, flag)
-        for {
-          result <- employeeService.archive(parsedId, parsedFlag)
-        } yield result.toString
-      }
-    case _ => OptionT.none
-  }
-
-  private def parseValuesToArchive(id: String, isArchived: String): (Long, Boolean) = {
-    Try(isArchived.toBoolean).toOption match {
-      case None       => (0L, true)
-      case Some(bool) => (Try(id.toLong).toOption.getOrElse(0L), bool)
-    }
-  }
-
-}
-
 object Main extends IOApp {
+
   override def run(args: List[String]): IO[ExitCode] = {
     for {
-      employeeService <- EmployeeService.of[IO]
-      _               <- ConsoleInterface(employeeService).cmd
+      service <- EmployeeService.of[IO]
+      _       <- serverConfiguration[IO](service).use(_ => IO.never)
     } yield ExitCode.Success
+  }
+
+  private def serverConfiguration[F[_]: ContextShift: ConcurrentEffect: Timer](
+    employeeService: EmployeeService[F]
+  ): Resource[F, Server[F]] = {
+    val httpApp = routes[F](employeeService).orNotFound
+    for {
+      server <- BlazeServerBuilder[F](ExecutionContext.global)
+        .bindHttp(port = 8080, host = "localhost")
+        .withHttpApp(httpApp)
+        .resource
+    } yield server
+  }
+
+  def routes[F[_]: Sync](employeeService: EmployeeService[F]): HttpRoutes[F] = {
+    val dsl = new Http4sDsl[F] {}
+    import dsl._
+
+    def allEmployees: HttpRoutes[F] = HttpRoutes.of[F] { case GET -> Root / "all" =>
+      for {
+        map      <- employeeService.all
+        employees = map.values.toList
+        response <- Ok(employees)
+      } yield response
+    }
+
+    def getEmployee: HttpRoutes[F] = HttpRoutes.of[F] { case GET -> Root / id =>
+      def processResult(employee: Option[Employee]): F[Response[F]] = {
+        employee match {
+          case None        => BadRequest("No employee with this id")
+          case Some(value) => Ok(value)
+        }
+      }
+
+      Try(id.toLong).toOption match {
+        case None => BadRequest("Incorrect id")
+        case Some(parsedId) =>
+          for {
+            employee <- employeeService.find(parsedId)
+            result   <- processResult(employee)
+          } yield result
+      }
+    }
+
+    def createEmployee: HttpRoutes[F] = HttpRoutes.of[F] { case req @ POST -> Root / "create" =>
+      val res = for {
+        employeeDto <- req.as[EmployeeDto]
+        result <- employeeService.create(
+          employeeDto.birthday,
+          employeeDto.firstName,
+          employeeDto.lastName,
+          employeeDto.salary,
+          employeeDto.position
+        )
+      } yield result
+
+      processResult(res)
+    }
+
+    def updateEmployee: HttpRoutes[F] = HttpRoutes.of[F] { case req @ PUT -> Root / "update" / id =>
+      Try(id.toLong).toOption match {
+        case None => BadRequest("Incorrect id")
+        case Some(parsedId) =>
+          val res = for {
+            employeeDto <- req.as[EmployeeDto]
+            isUpdated <- employeeService.update(
+              parsedId,
+              employeeDto.birthday,
+              employeeDto.firstName,
+              employeeDto.lastName,
+              employeeDto.salary,
+              employeeDto.position
+            )
+          } yield isUpdated
+
+          processResult(res)
+      }
+    }
+
+    def deleteEmployee: HttpRoutes[F] = HttpRoutes.of[F] { case DELETE -> Root / "delete" / id =>
+      Try(id.toLong).toOption match {
+        case None => BadRequest("Incorrect id")
+        case Some(parsedId) =>
+          for {
+            isDeleted <- employeeService.delete(parsedId)
+            status    <- booleanToStatus(isDeleted)
+          } yield status
+      }
+    }
+
+    object BooleanVar {
+      def unapply(value: String): Option[Boolean] =
+        Try(value.toBoolean).toOption
+    }
+
+    def archiveEmployee: HttpRoutes[F] = HttpRoutes.of[F] { case GET -> Root / "archive" / id / BooleanVar(archived) =>
+      Try(id.toLong).toOption match {
+        case None => BadRequest("Incorrect id")
+        case Some(parsedId) =>
+          for {
+            archived <- employeeService.archive(parsedId, archived)
+            status   <- booleanToStatus(archived)
+          } yield status
+      }
+    }
+
+    def booleanToStatus(bool: Boolean): F[Response[F]] = {
+      if (bool) Ok("Updated")
+      else BadRequest("Request is not completed")
+    }
+
+    def processResult[A](entity: F[AllErrorsOr[A]])(implicit E: EntityEncoder[F, A]): F[Response[F]] = {
+      entity
+        .flatMap {
+          case Validated.Valid(a)   => Created(a)
+          case Validated.Invalid(e) => BadRequest(e.toList.toString())
+        }
+        .handleErrorWith { ex =>
+          InternalServerError(ex.getMessage)
+        }
+    }
+
+    allEmployees <+> getEmployee <+> createEmployee <+> updateEmployee <+> deleteEmployee <+> archiveEmployee
   }
 }

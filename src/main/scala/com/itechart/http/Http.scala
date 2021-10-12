@@ -47,7 +47,7 @@ object Result {
 
 object GuessServer extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = BlazeServerBuilder[IO](ExecutionContext.global)
-    .bindHttp(port = 8080, host = "localhost")
+    .bindHttp(port = 8080, host = "0.0.0.0")
     .withHttpApp(httpApp)
     .serve
     .compile

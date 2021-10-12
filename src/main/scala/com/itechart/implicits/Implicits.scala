@@ -47,18 +47,17 @@ object Implicits {
    */
   object Exercise3_1 {
 
-    /**
-     * Amount of years since the invention of the
-     * hyper-drive technology (we are certainly in negative values at the moment).
-     */
+    /** Amount of years since the invention of the
+      * hyper-drive technology (we are certainly in negative values at the moment).
+      */
     case class HDEYears(value: Long)
 
     def secondBiggestValue[T](values: Seq[T])(implicit ord: Ordering[T]): Option[T] = {
       if (values.length < 2) None
-      else Some(
-        values.sorted
-        .tail.head
-      )
+      else
+        Some(
+          values.sorted.tail.head
+        )
     }
 
     object instances {
@@ -70,10 +69,9 @@ object Implicits {
 
   object Exercise3_2 {
 
-    /**
-     * Custom number type!
-     * For now it just wraps a Float but more interesting stuff could come in the future, who knows...
-     */
+    /** Custom number type!
+      * For now it just wraps a Float but more interesting stuff could come in the future, who knows...
+      */
     case class CustomNumber(value: Float)
 
     trait Summable[T] {
@@ -89,7 +87,6 @@ object Implicits {
 
     def sum[T](values: Seq[T])(implicit summable: Summable[T]): Option[T] = values.reduceOption(summable.sum)
   }
-
 
   object Exercise4 {
     /*
@@ -107,7 +104,7 @@ object Implicits {
     implicit val optionFoldable: Foldable[Option] = new Foldable[Option] {
       override def foldLeft[T, S](option: Option[T], s: S)(f: (S, T) => S): S =
         option match {
-          case None => s
+          case None    => s
           case Some(t) => f(s, t)
         }
     }

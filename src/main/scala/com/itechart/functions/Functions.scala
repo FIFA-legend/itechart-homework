@@ -27,8 +27,8 @@ object Functions {
         pair match {
           case (num, index) if index == 0 => acc + "(" + num
           case (num, index) if index == 3 => acc + ") " + num
-          case (num, index) if index == 6 => acc +  "-" + num
-          case (num, _) => acc + num
+          case (num, index) if index == 6 => acc + "-" + num
+          case (num, _)                   => acc + num
         }
       )
   }
@@ -45,18 +45,21 @@ object Functions {
 
   def comp(seq1: Seq[Int], seq2: Seq[Int]): Boolean = {
     if ((seq1 == Nil || seq2 == Nil) && seq1 != seq2) false
-    else seq1.sorted
-      .zip(seq2.sorted)
-      .forall { case (int1, int2) => int1 * int1 == int2 }
+    else
+      seq1.sorted
+        .zip(seq2.sorted)
+        .forall { case (int1, int2) => int1 * int1 == int2 }
   }
 
   // https://www.codewars.com/kata/57eb8fcdf670e99d9b000272/train/scala
 
   def high(s: String): String = {
     val words = s.split("\\s+")
-    val (_, index) = words.map(word => word.toCharArray)
+    val (_, index) = words
+      .map(word => word.toCharArray)
       .map(chars => chars.foldLeft(0)(_ + _ - 'a' + 1))
-      .zipWithIndex.maxBy { case (charSum, _) => charSum }
+      .zipWithIndex
+      .maxBy { case (charSum, _) => charSum }
     words(index)
   }
 
@@ -66,7 +69,7 @@ object Functions {
     @tailrec
     def func(previous: Int, list: List[Int], acc: String): String = {
       list match {
-        case Nil => acc
+        case Nil            => acc
         case element :: Nil => acc + element.toString
         case element :: next :: tail =>
           if (previous + 1 == element && next - 1 == element) func(element, next :: tail, acc + "_")
@@ -86,9 +89,9 @@ object Functions {
       import numeric._
       val sum = a + b + c
       count match {
-        case 1 => List(sum)
+        case 1                         => List(sum)
         case number if number == n - 3 => a :: b :: c :: sum :: go(b, c, sum, count - 1)(numeric)
-        case _ => sum :: go(b, c, sum, count - 1)(numeric)
+        case _                         => sum :: go(b, c, sum, count - 1)(numeric)
       }
     }
 
@@ -108,7 +111,8 @@ object Functions {
 
   def hasValidColumns(board: Array[Array[Int]]): Boolean = {
     def validColumn(col: Int, arrays: Array[Array[(Int, Int)]]): Boolean = {
-      val column = arrays.flatMap(_.toList)
+      val column = arrays
+        .flatMap(_.toList)
         .filter { case (_, index) => index == col }
         .map { case (int, _) => int }
       (1 to 9).forall(column.contains(_))
@@ -120,7 +124,8 @@ object Functions {
 
   def hasValidSquares(board: Array[Array[Int]]): Boolean = {
     def validSquare(row: Int, column: Int, board: Array[Array[Int]]): Boolean = {
-      val square = board.slice(row, row + 3)
+      val square = board
+        .slice(row, row + 3)
         .flatMap(_.slice(column, column + 3))
       (1 to 9).forall(square.contains(_))
     }
@@ -128,7 +133,5 @@ object Functions {
     (0 to 8 by 3).forall(row => (0 to 8 by 3).forall(column => validSquare(row, column, board)))
   }
 
-  def main(args: Array[String]): Unit = {
-    
-  }
+  def main(args: Array[String]): Unit = {}
 }

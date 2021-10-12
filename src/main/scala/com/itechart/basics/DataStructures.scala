@@ -11,14 +11,15 @@ object DataStructures {
   )
 
   val vegetableAmounts = Map(
-    "tomatoes" -> 17,
-    "peppers" -> 234,
-    "olives" -> 32,
+    "tomatoes"  -> 17,
+    "peppers"   -> 234,
+    "olives"    -> 32,
     "cucumbers" -> 323,
   )
 
   val totalVegetableWeights: Map[String, Int] = {
-    vegetableAmounts.filter { case (key, _) => vegetableWeights.contains(key) }
+    vegetableAmounts
+      .filter { case (key, _) => vegetableWeights.contains(key) }
       .map { case (key, amount) => (key, vegetableWeights(key) * amount) }
   }
 
@@ -29,9 +30,9 @@ object DataStructures {
         singleElementSets
       else {
         val result = for {
-          previousSet <- subsets(n - 1)
+          previousSet      <- subsets(n - 1)
           singleElementSet <- singleElementSets
-          element <- singleElementSet
+          element          <- singleElementSet
         } yield previousSet + element
         result.filter(set => set.size == n)
       }
@@ -43,9 +44,11 @@ object DataStructures {
   }
 
   def sortConsideringEqualValues[T](map: Map[T, Int])(implicit ord: Ordering[T]): List[(Set[T], Int)] = {
-    map.groupBy { case (_, value) => value }
+    map
+      .groupBy { case (_, value) => value }
       .map { case (int, map) => (int, map.keys) }
-      .toList.map { case (int, set) => (SortedSet.from(set), int) }
+      .toList
+      .map { case (int, set) => (SortedSet.from(set), int) }
       .sortWith { case ((_, int1), (_, int2)) => int1 < int2 }
   }
 

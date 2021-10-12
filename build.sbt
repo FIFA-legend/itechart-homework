@@ -1,3 +1,7 @@
+enablePlugins(JavaAppPackaging)
+enablePlugins(DockerPlugin)
+mainClass in Compile := Some("com.itechart.http.GuessServer")
+
 name := "Homeworkkk2"
 
 version := "1.0"
